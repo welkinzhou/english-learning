@@ -1,11 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" fill="none">
-  <rect width="192" height="192" rx="42" fill="#4A9BC7"/>
-  <rect x="16" y="16" width="160" height="160" rx="32" fill="#E8F4FC"/>
-  <circle cx="96" cy="78" r="28" fill="#7EC8E3"/>
-  <path d="M56 128c8-22 28-34 40-34s32 12 40 34" stroke="#4A9BC7" stroke-width="10" stroke-linecap="round" fill="none"/>
-  <circle cx="86" cy="74" r="4" fill="#2B6B8C"/>
-  <circle cx="106" cy="74" r="4" fill="#2B6B8C"/>
-  <path d="M88 88c4 5 12 5 16 0" stroke="#2B6B8C" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <rect x="128" y="48" width="28" height="20" rx="6" fill="#4A9BC7"/>
-  <text x="142" y="63" text-anchor="middle" fill="#fff" font-size="14" font-family="system-ui,sans-serif" font-weight="700">A</text>
+  <rect width="192" height="192" rx="40" fill="#3A86A8"/>
+  <rect x="18" y="18" width="156" height="156" rx="30" fill="#F0F6FA"/>
+  <text x="96" y="88" text-anchor="middle" fill="#2A6580" font-size="36" font-family="system-ui,sans-serif" font-weight="700">公三</text>
+  <text x="96" y="122" text-anchor="middle" fill="#3A86A8" font-size="16" font-family="system-ui,sans-serif" font-weight="600">PETS-3</text>
 </svg>

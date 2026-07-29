@@ -1,12 +1,12 @@
 {
-  "name": "零基础英语口语闯关学习工作台",
-  "short_name": "口语闯关",
-  "description": "从零到公共英语三级的口语闯关学习工作台，离线可用、每日打卡",
+  "name": "公三备考打卡 · PETS-3",
+  "short_name": "公三备考",
+  "description": "公共英语三级专属备考：单词、语法、阅读、听力、作文与打卡一站完成",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#E8F4FC",
-  "theme_color": "#4A9BC7",
+  "background_color": "#F0F6FA",
+  "theme_color": "#3A86A8",
   "lang": "zh-CN",
   "icons": [
     {
@@ -28,17 +28,10 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["education", "lifestyle"],
+  "categories": ["education"],
   "shortcuts": [
-    {
-      "name": "今日打卡",
-      "url": "./index.html#checkin",
-      "description": "完成今日口语任务"
-    },
-    {
-      "name": "音标闯关",
-      "url": "./index.html#phonetics",
-      "description": "48个国际音标练习"
-    }
+    { "name": "今日打卡", "url": "./index.html#home" },
+    { "name": "背单词", "url": "./index.html#vocab" },
+    { "name": "听力训练", "url": "./index.html#listening" }
   ]
 }

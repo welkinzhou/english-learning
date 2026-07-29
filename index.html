@@ -3,275 +3,186 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#4A9BC7" />
+  <meta name="theme-color" content="#3A86A8" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="口语闯关" />
-  <meta name="description" content="零基础英语口语闯关学习工作台 · 从零到公共英语三级 · 离线可用 · 每日打卡" />
+  <meta name="apple-mobile-web-app-title" content="公三备考" />
+  <meta name="description" content="公共英语三级 PETS-3 专属备考打卡：单词、语法、阅读、听力、作文一站完成" />
   <meta name="mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="./icons/icon-192.svg" />
-  <title>口语闯关 · 零基础英语口语学习工作台</title>
+  <title>公三备考打卡 · PETS-3</title>
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
 <body>
   <div class="app">
-    <!-- 左侧导航 -->
-    <nav class="side-nav" aria-label="主导航">
-      <div class="nav-logo" title="口语闯关">口</div>
-      <button type="button" class="nav-btn active" data-nav="home" aria-label="首页">
-        <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
-        <span>首页</span>
-      </button>
-      <button type="button" class="nav-btn" data-nav="checkin" aria-label="打卡">
-        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="m8 15 2.5 2.5L16 12"/></svg>
-        <span>打卡</span>
-      </button>
-      <button type="button" class="nav-btn" data-nav="phonetics" aria-label="音标">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
-        <span>音标</span>
-      </button>
-      <button type="button" class="nav-btn" data-nav="quiz" aria-label="抢答">
-        <svg viewBox="0 0 24 24"><path d="M12 3a7 7 0 0 1 7 7c0 2.5-1.3 4-3 5.5V18H8v-2.5C6.3 14 5 12.5 5 10a7 7 0 0 1 7-7z"/><path d="M10 21h4"/></svg>
-        <span>抢答</span>
-      </button>
-      <button type="button" class="nav-btn" data-nav="speaking" aria-label="口语">
-        <svg viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-8.5 8.5H7l-4 2V12A8.5 8.5 0 1 1 21 12z"/></svg>
-        <span>口语</span>
-      </button>
-      <button type="button" class="nav-btn" data-nav="pronounce" aria-label="纠音">
-        <svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 7a7 7 0 0 1 0 10"/></svg>
-        <span>纠音</span>
-      </button>
-      <div class="nav-spacer"></div>
-      <button type="button" class="nav-btn" data-nav="wrong" aria-label="错题">
-        <svg viewBox="0 0 24 24"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v4h4M8 13h8M8 17h5"/></svg>
-        <span>错题</span>
-      </button>
-      <button type="button" class="nav-btn" data-nav="plan" aria-label="计划">
-        <svg viewBox="0 0 24 24"><path d="M4 19V5a1 1 0 0 1 1-1h14"/><path d="M8 17h12M8 12h12M8 7h12"/></svg>
-        <span>计划</span>
-      </button>
+    <nav class="side-nav" aria-label="导航">
+      <div class="logo">公三</div>
+      <button type="button" class="nav-btn active" data-nav="home"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg><span>今日</span></button>
+      <button type="button" class="nav-btn" data-nav="vocab"><svg viewBox="0 0 24 24"><path d="M4 5h7v14H4zM13 5h7v14h-7z"/></svg><span>单词</span></button>
+      <button type="button" class="nav-btn" data-nav="grammar"><svg viewBox="0 0 24 24"><path d="M5 4h14v4H5zM5 10h9v10H5zM16 10h3v10h-3z"/></svg><span>语法</span></button>
+      <button type="button" class="nav-btn" data-nav="reading"><svg viewBox="0 0 24 24"><path d="M4 5h7a3 3 0 0 1 3 3v11H7a3 3 0 0 0-3 3V5zM20 5h-7a3 3 0 0 0-3 3v11h7a3 3 0 0 1 3 3V5z"/></svg><span>阅读</span></button>
+      <button type="button" class="nav-btn" data-nav="listening"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg><span>听力</span></button>
+      <button type="button" class="nav-btn" data-nav="writing"><svg viewBox="0 0 24 24"><path d="M4 20h4L18 10l-4-4L4 16v4z"/><path d="m14 6 4 4"/></svg><span>作文</span></button>
+      <div class="nav-gap"></div>
+      <button type="button" class="nav-btn" data-nav="progress"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16V10M12 16V7M16 16v-4"/></svg><span>进度</span></button>
+      <button type="button" class="nav-btn" data-nav="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 19a7 7 0 0 1 14 0"/></svg><span>我的</span></button>
     </nav>
 
     <main class="main">
-      <!-- 安装提示 -->
-      <div class="install-banner" id="install-banner">
-        <p id="install-text">添加到手机桌面，离线也能学，像 App 一样打开</p>
-        <button type="button" id="install-btn">添加桌面</button>
-      </div>
-
-      <!-- 首页 -->
-      <section class="section active" id="sec-home">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>口语闯关工作台</h1>
-            <p>零基础 → 公共英语三级 · 极简离线学习</p>
+      <!-- 今日 -->
+      <section class="section on" id="sec-home">
+        <div class="head">
+          <div>
+            <h1>公三备考打卡</h1>
+            <p>PETS-3 单词 · 语法 · 阅读 · 听力 · 作文</p>
           </div>
-          <div class="streak-pill"><span class="dot"></span>连续 <span id="streak-num">0</span> 天</div>
+          <div class="pill">连续 <span id="streak">0</span> 天</div>
         </div>
 
-        <div class="quote-card">
-          <div class="quote-label">今日励志金句</div>
-          <div class="quote-en" id="quote-en"></div>
-          <div class="quote-zh" id="quote-zh"></div>
+        <div class="timer-box">
+          <div>
+            <span>今日学习时长</span>
+            <b id="today-time">00:00:00</b>
+          </div>
+          <button type="button" class="btn btn-primary" id="btn-timer">开始计时</button>
         </div>
 
-        <div class="stats-grid">
-          <div class="stat-box"><div class="num" id="stat-streak">0</div><div class="label">连续打卡</div></div>
-          <div class="stat-box"><div class="num" id="stat-ph">0</div><div class="label">音标掌握</div></div>
-          <div class="stat-box"><div class="num" id="stat-quiz">0</div><div class="label">句子已会</div></div>
-          <div class="stat-box"><div class="num" id="stat-wrong">0</div><div class="label">错题待复盘</div></div>
+        <div class="stats">
+          <div class="stat"><b id="s-vocab">0</b><span>单词已会</span></div>
+          <div class="stat"><b id="s-grammar">0</b><span>语法专题</span></div>
+          <div class="stat"><b id="s-reading">0</b><span>阅读完成</span></div>
+          <div class="stat"><b id="s-listen">0</b><span>听力完成</span></div>
         </div>
 
-        <div class="card" style="margin-bottom:14px">
-          <div class="card-title">90天学习进度 <span class="badge" id="home-week">0/12 周</span></div>
-          <p class="card-desc">资料覆盖三个月从零到 PETS-3，点击下方进入计划</p>
-          <button type="button" class="btn btn-primary btn-block" data-goto="plan">查看三个月计划</button>
+        <div class="card">
+          <h2>今日备考任务</h2>
+          <p class="sub">五项全做完即可打卡 · 勾选或完成对应练习自动记录</p>
+          <div class="task-list" id="daily-tasks"></div>
+          <div class="bar"><i id="daily-bar"></i></div>
+          <button type="button" class="btn btn-ok btn-block" id="btn-checkin">完成今日打卡</button>
         </div>
 
-        <div class="home-modules">
-          <button type="button" class="mod-tile" data-goto="checkin">
-            <div class="icon">✓</div>
-            <strong>每日打卡</strong>
-            <small>模块1 · 四项任务</small>
-          </button>
-          <button type="button" class="mod-tile" data-goto="phonetics">
-            <div class="icon">Aa</div>
-            <strong>音标闯关</strong>
-            <small>第1关 · 48音标</small>
-          </button>
-          <button type="button" class="mod-tile" data-goto="quiz">
-            <div class="icon">中</div>
-            <strong>中英抢答</strong>
-            <small>第2关 · 互动自测</small>
-          </button>
-          <button type="button" class="mod-tile" data-goto="speaking">
-            <div class="icon">说</div>
-            <strong>即兴口语</strong>
-            <small>第3关 · 真题训练</small>
-          </button>
-          <button type="button" class="mod-tile" data-goto="pronounce">
-            <div class="icon">音</div>
-            <strong>发音纠错</strong>
-            <small>第4关 · 易混对比</small>
-          </button>
-          <button type="button" class="mod-tile" data-goto="wrong">
-            <div class="icon">本</div>
-            <strong>错题复盘</strong>
-            <small>本地持久记录</small>
-          </button>
+        <div class="mods">
+          <button type="button" class="mod" data-goto="vocab"><em>词库</em><strong>背单词</strong><small>120 高频词 · 闪卡+自测</small></button>
+          <button type="button" class="mod" data-goto="grammar"><em>语法</em><strong>考点专项</strong><small>8 专题 · 刷题巩固</small></button>
+          <button type="button" class="mod" data-goto="reading"><em>阅读</em><strong>真题风格</strong><small>6 篇理解练习</small></button>
+          <button type="button" class="mod" data-goto="listening"><em>听力</em><strong>音频训练</strong><small>系统朗读 · 听后作答</small></button>
+          <button type="button" class="mod" data-goto="writing"><em>写作</em><strong>范文+练习</strong><small>8 题提交存稿</small></button>
+          <button type="button" class="mod" data-goto="progress"><em>监督</em><strong>进度可视化</strong><small>时长 · 打卡曲线</small></button>
         </div>
       </section>
 
-      <!-- 打卡 -->
-      <section class="section" id="sec-checkin">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>每日打卡系统</h1>
-            <p>模块1 · 勾选今日任务，手机重复打开进度仍在</p>
-          </div>
-        </div>
-        <div class="card">
-          <div class="level-header">
-            <div class="card-title">今日任务</div>
-            <span class="level-progress" id="checkin-count">0/4</span>
-          </div>
-          <p class="card-desc">建议每天完成全部四项，养成开口习惯</p>
-          <div class="checkin-list" id="checkin-list"></div>
-          <div class="progress-wrap">
-            <div class="progress-meta"><span>今日完成度</span><span>加油</span></div>
-            <div class="progress-bar"><div class="progress-fill" id="checkin-fill"></div></div>
-          </div>
-          <div class="calendar-strip" id="calendar-strip"></div>
-        </div>
+      <!-- 单词 -->
+      <section class="section" id="sec-vocab">
+        <div class="head"><div><h1>公三词库</h1><p>闪卡记忆 → 中英互测 → 标记掌握</p></div><div class="pill" id="vocab-pill">0/120</div></div>
+        <div class="tabs" id="vocab-tabs"></div>
+        <div class="card" id="vocab-panel"></div>
       </section>
 
-      <!-- 音标 -->
-      <section class="section" id="sec-phonetics">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>音标闯关专区</h1>
-            <p>第1关 · 完整48个国际音标</p>
-          </div>
-          <span class="level-progress" id="ph-progress">0/48</span>
-        </div>
-        <div class="card">
-          <p class="card-desc">点击展开发音提示 · 长按卡片标记掌握 · 易错音已标注</p>
-          <div class="ph-tabs" id="ph-tabs"></div>
-          <div class="ph-grid" id="ph-grid"></div>
-        </div>
+      <!-- 语法 -->
+      <section class="section" id="sec-grammar">
+        <div class="head"><div><h1>考点语法</h1><p>先看要点，再做专项题</p></div><div class="pill" id="grammar-pill">0/8</div></div>
+        <div class="card" id="grammar-list"></div>
+        <div class="card" id="grammar-panel" style="display:none"></div>
       </section>
 
-      <!-- 抢答 -->
-      <section class="section" id="sec-quiz">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>中英抢答游戏</h1>
-            <p>第2关 · 中文显示，点击揭晓英文</p>
-          </div>
-          <span class="level-progress" id="quiz-progress">0/10</span>
-        </div>
-        <div class="card">
-          <div class="level-header">
-            <div>
-              <div class="card-title" id="quiz-level-title">第2关</div>
-              <p class="card-desc" id="quiz-level-desc" style="margin:0"></p>
-            </div>
-          </div>
-          <select id="quiz-level-select" class="btn btn-ghost" style="width:100%;margin-bottom:12px;padding:10px;text-align:left"></select>
-          <div id="quiz-list"></div>
-        </div>
+      <!-- 阅读 -->
+      <section class="section" id="sec-reading">
+        <div class="head"><div><h1>阅读练习</h1><p>真题风格短文理解</p></div><div class="pill" id="reading-pill">0/6</div></div>
+        <div class="card" id="reading-list"></div>
+        <div class="card" id="reading-panel" style="display:none"></div>
       </section>
 
-      <!-- 口语 -->
-      <section class="section" id="sec-speaking">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>即兴口语问答</h1>
-            <p>第3关 · 高频口语真题口头作答</p>
-          </div>
-          <span class="level-progress" id="speak-progress">0/8</span>
-        </div>
-        <div class="card">
-          <div class="level-header">
-            <div>
-              <div class="card-title" id="speak-level-title">第3关</div>
-              <p class="card-desc" id="speak-level-desc" style="margin:0"></p>
-            </div>
-          </div>
-          <select id="speak-level-select" class="btn btn-ghost" style="width:100%;margin-bottom:8px;padding:10px;text-align:left"></select>
-          <button type="button" class="btn btn-primary btn-block" id="speak-shuffle" style="margin-bottom:12px">随机打乱题目</button>
-          <div id="speak-list"></div>
-        </div>
+      <!-- 听力 -->
+      <section class="section" id="sec-listening">
+        <div class="head"><div><h1>听力训练</h1><p id="listen-tip"></p></div><div class="pill" id="listen-pill">0/8</div></div>
+        <div class="card" id="listen-list"></div>
+        <div class="card" id="listen-panel" style="display:none"></div>
       </section>
 
-      <!-- 纠音 -->
-      <section class="section" id="sec-pronounce">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>发音纠错专区</h1>
-            <p>第4关 · 易混发音对比训练</p>
-          </div>
-          <span class="level-progress" id="pron-progress">0/8</span>
-        </div>
+      <!-- 作文 -->
+      <section class="section" id="sec-writing">
+        <div class="head"><div><h1>作文专项</h1><p>审题提纲 · 在线写作 · 对照范文</p></div><div class="pill" id="write-pill">0/8</div></div>
         <div class="card">
-          <p class="card-desc">sheep/ship · bad/bed · think/this · walk/work 等经典易混对</p>
-          <div id="pair-list"></div>
+          <h2>写作提示</h2>
+          <ul class="points" id="write-tips"></ul>
         </div>
+        <div class="card" id="write-list"></div>
+        <div class="card" id="write-panel" style="display:none"></div>
       </section>
 
-      <!-- 错题 -->
-      <section class="section" id="sec-wrong">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>错题复盘记录本</h1>
-            <p>本地存储 · 无广告 · 随时复习</p>
-          </div>
+      <!-- 进度 -->
+      <section class="section" id="sec-progress">
+        <div class="head"><div><h1>学习进度</h1><p>打卡与时长可视化</p></div></div>
+        <div class="card">
+          <h2>近 7 日学习时长（分钟）</h2>
+          <div class="chart" id="time-chart"></div>
         </div>
         <div class="card">
-          <button type="button" class="btn btn-danger btn-block" id="wrong-clear" style="margin-bottom:12px">清空错题本</button>
+          <h2>近 14 日打卡</h2>
+          <div class="chart" id="check-chart" style="height:72px"></div>
+        </div>
+        <div class="card">
+          <h2>模块完成度</h2>
+          <div id="module-progress"></div>
+        </div>
+        <div class="card">
+          <h2>错题本</h2>
+          <p class="sub">刷题错题自动收录，可在此复盘</p>
           <div id="wrong-list"></div>
+          <button type="button" class="btn btn-bad btn-block" id="wrong-clear">清空错题本</button>
         </div>
       </section>
 
-      <!-- 计划 -->
-      <section class="section" id="sec-plan">
-        <div class="top-bar">
-          <div class="brand-block">
-            <h1>三个月进阶计划</h1>
-            <p>从零到公共英语三级（PETS-3）口语资料</p>
+      <!-- 我的 -->
+      <section class="section" id="sec-me">
+        <div class="head"><div><h1>我的</h1><p>版本 <span id="app-ver"></span> · 本地离线存储</p></div></div>
+        <div class="card">
+          <h2>备考目标</h2>
+          <div class="field"><label>每日目标学习时长（分钟）</label><input type="number" id="set-minutes" min="10" max="180" /></div>
+          <div class="field"><label>每日背单词目标（个）</label><input type="number" id="set-vocab" min="5" max="50" /></div>
+          <div class="field"><label>任务提醒时间（整点）</label><input type="number" id="set-remind" min="6" max="23" /></div>
+          <div class="field">
+            <label><input type="checkbox" id="set-remind-on" /> 开启每日提醒（浏览器通知，需授权）</label>
           </div>
+          <button type="button" class="btn btn-primary btn-block" id="btn-save-set">保存设置</button>
         </div>
         <div class="card">
-          <div class="card-title">口试备考要点</div>
-          <ul id="pets-tips" style="padding-left:18px;font-size:0.82rem;color:var(--text-2);line-height:1.7"></ul>
+          <h2>数据管理</h2>
+          <p class="sub">进度保存在本机。发版后可选择重置。</p>
+          <button type="button" class="btn btn-ghost btn-block" id="btn-export">导出进度备份</button>
+          <button type="button" class="btn btn-warn btn-block" id="btn-reset-soft">仅重置今日打卡</button>
+          <button type="button" class="btn btn-bad btn-block" id="btn-reset-all">重置全部学习进度</button>
         </div>
         <div class="card">
-          <div class="card-title">12周课程大纲</div>
-          <p class="card-desc">每周含目标、20词、必会句、闯关任务 — 点击展开</p>
-          <div id="week-list"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">数据管理</div>
-          <p class="card-desc">进度保存在本机浏览器，可导出备份</p>
-          <button type="button" class="btn btn-primary btn-block" id="btn-export">导出学习进度 JSON</button>
-          <button type="button" class="btn btn-ghost btn-block" id="btn-reset">重置全部进度</button>
+          <h2>添加到桌面</h2>
+          <p class="sub">iOS：Safari 分享 → 添加到主屏幕<br>Android：浏览器菜单 → 安装应用 / 添加到主屏幕</p>
         </div>
       </section>
     </main>
   </div>
 
-  <div class="toast" id="toast" role="status"></div>
+  <div class="modal-mask" id="version-modal">
+    <div class="modal">
+      <h3>检测到新版本</h3>
+      <p>应用已更新到 v<span id="modal-ver"></span>。是否重置本地学习进度，从零开始新阶段备考？也可保留旧进度继续用。</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-bad" id="ver-reset">重置进度并继续</button>
+        <button type="button" class="btn btn-ghost" id="ver-keep">保留进度</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
 
   <script src="./js/storage.js"></script>
-  <script src="./js/data/phonetics.js"></script>
-  <script src="./js/data/quiz.js"></script>
-  <script src="./js/data/speaking.js"></script>
-  <script src="./js/data/pronunciation.js"></script>
-  <script src="./js/data/quotes.js"></script>
-  <script src="./js/data/curriculum.js"></script>
+  <script src="./js/data/vocab.js"></script>
+  <script src="./js/data/grammar.js"></script>
+  <script src="./js/data/reading.js"></script>
+  <script src="./js/data/listening.js"></script>
+  <script src="./js/data/writing.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

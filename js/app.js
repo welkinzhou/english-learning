@@ -1,542 +1,763 @@
-/** 零基础英语口语闯关学习工作台 — 主逻辑 */
+/** PETS-3 备考打卡 App */
 (() => {
   'use strict';
 
   let state = Storage.load();
-  let deferredPrompt = null;
-  let currentPhCat = 'long';
-  let currentQuizLevel = 0;
-  let currentSpeakLevel = 0;
+  let timerOn = false;
+  let timerTick = null;
+  let sessionStart = 0;
+  let vocabUnit = VOCAB_DATA.units[0].id;
+  let flashIdx = 0;
+  let quizMode = false;
 
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
-  function persist() {
-    Storage.save(state);
-  }
+  function persist() { Storage.save(state); }
 
   function toast(msg) {
     const el = $('#toast');
     el.textContent = msg;
-    el.classList.add('show');
+    el.classList.add('on');
     clearTimeout(toast._t);
-    toast._t = setTimeout(() => el.classList.remove('show'), 1800);
+    toast._t = setTimeout(() => el.classList.remove('on'), 1800);
+  }
+
+  function fmtTime(sec) {
+    const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function todaySec() {
+    const k = Storage.todayKey();
+    return state.studySeconds[k] || 0;
+  }
+
+  function addStudySeconds(n) {
+    const k = Storage.todayKey();
+    state.studySeconds[k] = (state.studySeconds[k] || 0) + n;
+    persist();
+    refreshTimerUI();
   }
 
   function navTo(id) {
-    $$('.section').forEach((s) => s.classList.toggle('active', s.id === `sec-${id}`));
+    $$('.section').forEach((el) => el.classList.toggle('on', el.id === `sec-${id}`));
     $$('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.nav === id));
-    window.location.hash = id;
+    location.hash = id;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (id === 'vocab') renderVocab();
+    if (id === 'grammar') renderGrammarList();
+    if (id === 'reading') renderReadingList();
+    if (id === 'listening') renderListenList();
+    if (id === 'writing') renderWriteList();
+    if (id === 'progress') renderProgress();
+    if (id === 'me') renderMe();
+    if (id === 'home') renderHome();
   }
 
-  /* —— 金句 —— */
-  function renderQuote() {
-    const list = window.QUOTES_DATA;
-    const day = Math.floor(Date.now() / 86400000) % list.length;
-    const q = list[day];
-    $('#quote-en').textContent = q.en;
-    $('#quote-zh').textContent = q.zh;
-  }
-
-  /* —— 打卡 —— */
-  function renderCheckin() {
-    const today = Storage.getTodayCheckin(state);
+  function markDaily(key, val = true) {
+    const day = Storage.ensureDaily(state);
+    day[key] = val;
+    if (Storage.isDayComplete(day)) day.checked = true;
     Storage.recalcStreak(state);
     persist();
+  }
 
+  function addWrong(item) {
+    state.wrongBook = state.wrongBook.filter((w) => w.id !== item.id);
+    state.wrongBook.unshift({ ...item, at: Date.now() });
+    if (state.wrongBook.length > 80) state.wrongBook.length = 80;
+  }
+
+  /* —— 首页 —— */
+  function renderHome() {
+    Storage.ensureDaily(state);
+    Storage.recalcStreak(state);
+    persist();
+    $('#streak').textContent = state.streak;
+    refreshTimerUI();
+
+    const known = Object.values(state.vocab).filter((v) => v.status === 'known').length;
+    $('#s-vocab').textContent = known;
+    $('#s-grammar').textContent = Object.keys(state.grammar).length;
+    $('#s-reading').textContent = Object.keys(state.reading).length;
+    $('#s-listen').textContent = Object.keys(state.listening).length;
+
+    const day = Storage.ensureDaily(state);
     const tasks = [
-      { key: 'phonetics', title: '音标练习', desc: '完成今日音标跟读/点亮' },
-      { key: 'shadow', title: '短句跟读', desc: '跟读今日金句与万能句' },
-      { key: 'quest', title: '口语闯关', desc: '完成任意一关口语任务' },
-      { key: 'review', title: '录音复盘', desc: '自测后回听并标记掌握' }
+      { key: 'vocab', title: '背单词', desc: `完成今日 ${state.settings.dailyVocabTarget} 词目标或一轮闪卡` },
+      { key: 'grammar', title: '语法专项', desc: '完成一个语法专题练习' },
+      { key: 'reading', title: '阅读练习', desc: '完成一篇阅读理解' },
+      { key: 'listening', title: '听力训练', desc: '完成一则听力作答' },
+      { key: 'writing', title: '写作练习', desc: '提交或保存一篇作文' }
     ];
+    $('#daily-tasks').innerHTML = tasks.map((t) => `
+      <button type="button" class="task ${day[t.key] ? 'done' : ''}" data-task="${t.key}">
+        <span class="box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>
+        <span><strong>${t.title}</strong><small>${t.desc}</small></span>
+      </button>`).join('');
 
-    const list = $('#checkin-list');
-    list.innerHTML = tasks
-      .map((t) => {
-        const done = !!today[t.key];
-        return `
-        <div class="checkin-item ${done ? 'done' : ''}" data-task="${t.key}" role="checkbox" aria-checked="${done}">
-          <div class="check-box"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <div class="check-info"><strong>${t.title}</strong><small>${t.desc}</small></div>
-        </div>`;
-      })
-      .join('');
-
-    list.onclick = (e) => {
-      const item = e.target.closest('.checkin-item');
-      if (!item) return;
-      const key = item.dataset.task;
-      const day = Storage.getTodayCheckin(state);
-      day[key] = !day[key];
-      if (Storage.isFullyChecked(day)) {
-        state.lastCheckinDate = Storage.todayKey();
-        Storage.recalcStreak(state);
-        toast(`今日打卡完成！连续 ${state.streak} 天`);
-      } else {
-        Storage.recalcStreak(state);
-        toast(day[key] ? '已勾选 ✓' : '已取消');
-      }
-      persist();
-      renderCheckin();
-      renderHomeStats();
-    };
-
-    const doneCount = tasks.filter((t) => today[t.key]).length;
-    $('#checkin-count').textContent = `${doneCount}/4`;
-    $('#checkin-fill').style.width = `${(doneCount / 4) * 100}%`;
-    $('#streak-num').textContent = state.streak;
-
-    // 近7天
-    const strip = $('#calendar-strip');
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const k = Storage.todayKey(d);
-      const full = Storage.isFullyChecked(state.checkins[k]);
-      const isToday = i === 0;
-      days.push(`
-        <div class="day-chip ${full ? 'done' : ''} ${isToday ? 'today' : ''}">
-          ${['日', '一', '二', '三', '四', '五', '六'][d.getDay()]}
-          <span class="d">${d.getDate()}</span>
-        </div>`);
-    }
-    strip.innerHTML = days.join('');
-  }
-
-  /* —— 音标 —— */
-  function renderPhonetics() {
-    const tabs = $('#ph-tabs');
-    tabs.innerHTML = PHONETICS_DATA.categories
-      .map(
-        (c) =>
-          `<button type="button" class="ph-tab ${c.id === currentPhCat ? 'active' : ''}" data-cat="${c.id}">${c.name}</button>`
-      )
-      .join('');
-
-    tabs.onclick = (e) => {
-      const btn = e.target.closest('.ph-tab');
+    $('#daily-tasks').onclick = (e) => {
+      const btn = e.target.closest('[data-task]');
       if (!btn) return;
-      currentPhCat = btn.dataset.cat;
-      renderPhonetics();
+      const k = btn.dataset.task;
+      const d = Storage.ensureDaily(state);
+      d[k] = !d[k];
+      persist();
+      renderHome();
+      toast(d[k] ? '已勾选' : '已取消');
     };
 
-    const items = PHONETICS_DATA.items.filter((i) => i.cat === currentPhCat);
-    const grid = $('#ph-grid');
-    grid.innerHTML = items
-      .map((item) => {
-        const mastered = state.phoneticsMastered.includes(item.id);
-        return `
-        <button type="button" class="ph-card ${mastered ? 'mastered' : ''} ${item.hard ? 'hard' : ''}" data-id="${item.id}">
-          <div class="ph-symbol">${item.symbol}${item.hard ? '<span class="hard-tag">易错</span>' : ''}</div>
-          <div class="ph-name">${item.name}</div>
-          <div class="ph-example"><em>${item.example}</em></div>
-          <div class="ph-tip">${item.tip}<br><span style="color:var(--primary);font-weight:600">点击再次切换 · 长按标记掌握</span></div>
-        </button>`;
-      })
-      .join('');
-
-    grid.querySelectorAll('.ph-card').forEach((card) => {
-      let timer;
-      card.addEventListener('click', () => card.classList.toggle('open'));
-      card.addEventListener('pointerdown', () => {
-        timer = setTimeout(() => {
-          const id = card.dataset.id;
-          const idx = state.phoneticsMastered.indexOf(id);
-          if (idx >= 0) state.phoneticsMastered.splice(idx, 1);
-          else state.phoneticsMastered.push(id);
-          persist();
-          toast(idx >= 0 ? '取消掌握' : '已标记掌握');
-          renderPhonetics();
-          renderHomeStats();
-        }, 550);
-      });
-      card.addEventListener('pointerup', () => clearTimeout(timer));
-      card.addEventListener('pointerleave', () => clearTimeout(timer));
-    });
-
-    $('#ph-progress').textContent = `${state.phoneticsMastered.length}/48`;
+    const done = tasks.filter((t) => day[t.key]).length;
+    $('#daily-bar').style.width = `${(done / 5) * 100}%`;
   }
 
-  /* —— 抢答 —— */
-  function renderQuiz() {
-    const levels = QUIZ_DATA.levels;
-    const level = levels[currentQuizLevel];
-    $('#quiz-level-title').textContent = level.title;
-    $('#quiz-level-desc').textContent = level.desc;
+  function refreshTimerUI() {
+    let sec = todaySec();
+    if (timerOn) sec += Math.floor((Date.now() - sessionStart) / 1000);
+    $('#today-time').textContent = fmtTime(sec);
+    const btn = $('#btn-timer');
+    if (btn) btn.textContent = timerOn ? '暂停计时' : '开始计时';
+  }
 
-    const known = level.items.filter((i) => state.quizDone[i.id] === 'known').length;
-    $('#quiz-progress').textContent = `${known}/${level.items.length}`;
+  function toggleTimer() {
+    if (timerOn) {
+      const gained = Math.floor((Date.now() - sessionStart) / 1000);
+      timerOn = false;
+      clearInterval(timerTick);
+      addStudySeconds(gained);
+      toast(`已记录 ${gained} 秒`);
+    } else {
+      timerOn = true;
+      sessionStart = Date.now();
+      timerTick = setInterval(refreshTimerUI, 1000);
+      toast('计时开始');
+      refreshTimerUI();
+    }
+  }
 
-    const sel = $('#quiz-level-select');
-    sel.innerHTML = levels.map((l, i) => `<option value="${i}">${l.title}</option>`).join('');
-    sel.value = String(currentQuizLevel);
-    sel.onchange = () => {
-      currentQuizLevel = Number(sel.value);
-      renderQuiz();
+  /* —— 单词 —— */
+  function vocabKnownCount() {
+    return Object.values(state.vocab).filter((v) => v.status === 'known').length;
+  }
+
+  function renderVocab() {
+    $('#vocab-pill').textContent = `${vocabKnownCount()}/${VOCAB_DATA.all().length}`;
+    $('#vocab-tabs').innerHTML = VOCAB_DATA.units.map((u) =>
+      `<button type="button" class="tab ${u.id === vocabUnit ? 'on' : ''}" data-u="${u.id}">${u.title.replace('单元', 'U')}</button>`
+    ).join('');
+    $('#vocab-tabs').onclick = (e) => {
+      const t = e.target.closest('[data-u]');
+      if (!t) return;
+      vocabUnit = t.dataset.u;
+      flashIdx = 0;
+      quizMode = false;
+      renderVocab();
     };
 
-    const box = $('#quiz-list');
-    box.innerHTML = level.items
-      .map((item) => {
-        const status = state.quizDone[item.id];
-        return `
-        <div class="quiz-item" data-id="${item.id}">
-          <div class="quiz-zh">${item.zh}</div>
-          <div class="quiz-hint">点击显示英文 · ${item.tip}${status === 'known' ? ' · ✓已会' : status === 'wrong' ? ' · 已入错题本' : ''}</div>
-          <div class="quiz-en">${item.en}</div>
-          <div class="quiz-actions">
-            <button type="button" class="btn btn-accent" data-act="known">我会了</button>
-            <button type="button" class="btn btn-danger" data-act="wrong">加入错题本</button>
-          </div>
+    const unit = VOCAB_DATA.units.find((u) => u.id === vocabUnit);
+    const words = unit.words;
+    const panel = $('#vocab-panel');
+
+    if (quizMode) {
+      const w = words[flashIdx % words.length];
+      const options = shuffle([w.meaning, ...sampleMeanings(w.id, 3)]);
+      const correctIdx = options.indexOf(w.meaning);
+      panel.innerHTML = `
+        <h2>自测 · ${unit.title}</h2>
+        <p class="sub">${flashIdx + 1}/${words.length} · 选出正确中文意思</p>
+        <div class="q-card" id="vq">
+          <div class="q">${w.word} <span style="color:var(--muted);font-weight:500">${w.phonetic}</span></div>
+          ${options.map((op, i) => `<button type="button" class="opt" data-i="${i}">${op}</button>`).join('')}
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-ghost" id="vq-back">返回闪卡</button>
+          <button type="button" class="btn btn-primary" id="vq-next">下一词</button>
         </div>`;
-      })
-      .join('');
-
-    box.onclick = (e) => {
-      const act = e.target.closest('[data-act]');
-      const itemEl = e.target.closest('.quiz-item');
-      if (!itemEl) return;
-      const id = itemEl.dataset.id;
-      const data = level.items.find((x) => x.id === id);
-
-      if (act) {
-        e.stopPropagation();
-        if (act.dataset.act === 'known') {
-          state.quizDone[id] = 'known';
-          state.wrongBook = state.wrongBook.filter((w) => w.id !== id);
-          toast('已掌握');
+      $('#vq').onclick = (e) => {
+        const opt = e.target.closest('.opt');
+        if (!opt || $('#vq').classList.contains('revealed')) return;
+        $('#vq').classList.add('revealed');
+        const pick = Number(opt.dataset.i);
+        const ok = pick === correctIdx;
+        $$('.opt', $('#vq')).forEach((o) => {
+          if (Number(o.dataset.i) === correctIdx) o.classList.add('right');
+        });
+        opt.classList.add(ok ? 'right' : 'wrong');
+        ensureVocab(w.id);
+        if (ok) {
+          state.vocab[w.id].correct = (state.vocab[w.id].correct || 0) + 1;
+          if (state.vocab[w.id].correct >= 2) state.vocab[w.id].status = 'known';
+          else state.vocab[w.id].status = 'learning';
         } else {
-          state.quizDone[id] = 'wrong';
-          addWrong({ id, type: '抢答', prompt: data.zh, answer: data.en });
-          toast('已加入错题本');
+          state.vocab[w.id].wrong = (state.vocab[w.id].wrong || 0) + 1;
+          state.vocab[w.id].status = 'learning';
+          addWrong({ id: w.id, module: '单词', prompt: w.word, answer: w.meaning });
         }
         persist();
-        renderQuiz();
-        renderWrong();
-        renderHomeStats();
-        return;
-      }
-      itemEl.classList.toggle('revealed');
-    };
-  }
-
-  function addWrong({ id, type, prompt, answer }) {
-    state.wrongBook = state.wrongBook.filter((w) => w.id !== id);
-    state.wrongBook.unshift({ id, type, prompt, answer, at: Date.now() });
-    if (state.wrongBook.length > 100) state.wrongBook.length = 100;
-  }
-
-  /* —— 口语 —— */
-  function renderSpeaking() {
-    const levels = SPEAKING_DATA.levels;
-    const level = levels[currentSpeakLevel];
-    $('#speak-level-title').textContent = level.title;
-    $('#speak-level-desc').textContent = level.desc;
-
-    const done = level.items.filter((i) => state.speakingDone[i.id]).length;
-    $('#speak-progress').textContent = `${done}/${level.items.length}`;
-
-    const sel = $('#speak-level-select');
-    sel.innerHTML = levels.map((l, i) => `<option value="${i}">${l.title}</option>`).join('');
-    sel.value = String(currentSpeakLevel);
-    sel.onchange = () => {
-      currentSpeakLevel = Number(sel.value);
-      renderSpeaking();
-    };
-
-    const shuffled = [...level.items].sort(() => Math.random() - 0.5);
-    const box = $('#speak-list');
-    box.innerHTML = shuffled
-      .map((item, idx) => {
-        const ok = state.speakingDone[item.id];
-        return `
-        <div class="speak-card" data-id="${item.id}">
-          <div class="speak-q-num">题目 ${idx + 1}${ok ? ' · 已练过' : ''}</div>
-          <div class="speak-q">${item.en}</div>
-          <div class="speak-q-zh">${item.zh}</div>
-          <div class="btn-row">
-            <button type="button" class="btn btn-primary" data-act="toggle">展开参考答案</button>
-            <button type="button" class="btn btn-accent" data-act="done">练过了</button>
-            <button type="button" class="btn btn-danger" data-act="wrong">加入错题本</button>
-          </div>
-          <div class="speak-answer">
-            <h4>参考作答</h4>
-            <p>${item.sampleEn}</p>
-            <p class="zh">${item.sampleZh}</p>
-          </div>
-        </div>`;
-      })
-      .join('');
-
-    box.onclick = (e) => {
-      const act = e.target.closest('[data-act]');
-      const card = e.target.closest('.speak-card');
-      if (!act || !card) return;
-      const id = card.dataset.id;
-      const data = level.items.find((x) => x.id === id);
-      if (act.dataset.act === 'toggle') {
-        card.classList.toggle('open');
-        act.textContent = card.classList.contains('open') ? '收起答案' : '展开参考答案';
-      } else if (act.dataset.act === 'done') {
-        state.speakingDone[id] = true;
-        persist();
-        toast('已记录练习');
-        renderSpeaking();
-        renderHomeStats();
-      } else if (act.dataset.act === 'wrong') {
-        addWrong({ id, type: '口语', prompt: data.en + ' / ' + data.zh, answer: data.sampleEn });
-        persist();
-        toast('已加入错题本');
-        renderWrong();
-      }
-    };
-
-    $('#speak-shuffle').onclick = () => {
-      renderSpeaking();
-      toast('已重新随机题目');
-    };
-  }
-
-  /* —— 发音 —— */
-  function renderPronounce() {
-    const box = $('#pair-list');
-    box.innerHTML = PRONUNCIATION_DATA.pairs
-      .map((p) => {
-        const done = state.pronounceDone.includes(p.id);
-        return `
-        <div class="pair-card ${done ? '' : ''}" data-id="${p.id}">
-          <div class="pair-words">
-            <div class="pair-word"><strong>${p.left.word}</strong><span>${p.left.ipa} · ${p.left.tip}</span></div>
-            <div class="pair-vs">VS</div>
-            <div class="pair-word"><strong>${p.right.word}</strong><span>${p.right.ipa} · ${p.right.tip}</span></div>
-          </div>
-          <div style="text-align:center;margin-top:8px;font-size:0.72rem;color:var(--text-3)">
-            ${p.focus}${done ? ' · ✓已掌握' : ' · 点击展开'}
-          </div>
-          <div class="pair-detail">
-            <p>${p.detail}</p>
-            <div class="mini-examples">${p.examples.map((ex) => `<code>${ex}</code>`).join('')}</div>
-            <p style="margin-top:8px"><strong>练习：</strong>${p.practice}</p>
-            <button type="button" class="btn btn-accent btn-block" data-act="master">${done ? '取消掌握' : '标记掌握'}</button>
-          </div>
-        </div>`;
-      })
-      .join('');
-
-    box.onclick = (e) => {
-      const card = e.target.closest('.pair-card');
-      if (!card) return;
-      const act = e.target.closest('[data-act]');
-      const id = card.dataset.id;
-      if (act) {
-        e.stopPropagation();
-        const idx = state.pronounceDone.indexOf(id);
-        if (idx >= 0) state.pronounceDone.splice(idx, 1);
-        else state.pronounceDone.push(id);
-        persist();
-        toast(idx >= 0 ? '已取消' : '已掌握');
-        renderPronounce();
-        renderHomeStats();
-        return;
-      }
-      card.classList.toggle('open');
-    };
-
-    $('#pron-progress').textContent = `${state.pronounceDone.length}/${PRONUNCIATION_DATA.pairs.length}`;
-  }
-
-  /* —— 错题本 —— */
-  function renderWrong() {
-    const box = $('#wrong-list');
-    if (!state.wrongBook.length) {
-      box.innerHTML = '<div class="empty-state">暂无错题。在抢答或口语关卡点击「加入错题本」即可记录。</div>';
+        maybeMarkVocabDaily();
+        $('#vocab-pill').textContent = `${vocabKnownCount()}/${VOCAB_DATA.all().length}`;
+      };
+      $('#vq-back').onclick = () => { quizMode = false; renderVocab(); };
+      $('#vq-next').onclick = () => { flashIdx = (flashIdx + 1) % words.length; renderVocab(); };
       return;
     }
-    box.innerHTML = state.wrongBook
-      .map(
-        (w) => `
-      <div class="wrong-item" data-id="${w.id}">
-        <div class="meta">
-          <strong>${w.prompt}</strong>
-          <small>${w.type} · ${new Date(w.at).toLocaleDateString()}</small>
-          <div class="quiz-en" style="display:block;margin-top:6px;border:none;padding:0;font-size:0.85rem">${w.answer}</div>
-        </div>
-        <button type="button" class="btn btn-ghost" data-act="del">删除</button>
-      </div>`
-      )
-      .join('');
 
-    box.onclick = (e) => {
-      const btn = e.target.closest('[data-act=del]');
-      if (!btn) return;
-      const id = btn.closest('.wrong-item').dataset.id;
-      state.wrongBook = state.wrongBook.filter((w) => w.id !== id);
+    const w = words[flashIdx % words.length];
+    const st = state.vocab[w.id]?.status || 'new';
+    panel.innerHTML = `
+      <h2>${unit.title}</h2>
+      <p class="sub">${flashIdx + 1}/${words.length} · 点击卡片显示释义 · 当前：${statusLabel(st)}</p>
+      <div class="flash" id="flash">
+        <div class="word">${w.word}</div>
+        <div class="phon">${w.phonetic}</div>
+        <div class="mean">${w.meaning}</div>
+        <div class="ex">${w.example}</div>
+        <div class="hint">点击显示释义与例句</div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" id="v-prev">上一个</button>
+        <button type="button" class="btn btn-primary" id="v-next">下一个</button>
+        <button type="button" class="btn btn-ok" id="v-known">标记已会</button>
+        <button type="button" class="btn btn-ghost" id="v-quiz">开始自测</button>
+      </div>`;
+    $('#flash').onclick = () => $('#flash').classList.toggle('show');
+    $('#v-prev').onclick = () => { flashIdx = (flashIdx - 1 + words.length) % words.length; renderVocab(); };
+    $('#v-next').onclick = () => {
+      flashIdx = (flashIdx + 1) % words.length;
+      ensureVocab(w.id);
+      if (state.vocab[w.id].status === 'new') state.vocab[w.id].status = 'learning';
       persist();
-      renderWrong();
-      toast('已删除');
+      maybeMarkVocabDaily();
+      renderVocab();
     };
-
-    $('#wrong-clear').onclick = () => {
-      if (!state.wrongBook.length) return;
-      state.wrongBook = [];
+    $('#v-known').onclick = () => {
+      ensureVocab(w.id);
+      state.vocab[w.id].status = 'known';
       persist();
-      renderWrong();
-      toast('错题本已清空');
+      maybeMarkVocabDaily();
+      toast('已掌握');
+      flashIdx = (flashIdx + 1) % words.length;
+      renderVocab();
     };
+    $('#v-quiz').onclick = () => { quizMode = true; flashIdx = 0; renderVocab(); };
   }
 
-  /* —— 三个月计划 —— */
-  function renderCurriculum() {
-    const box = $('#week-list');
-    box.innerHTML = CURRICULUM_DATA.weeks
-      .map((w) => {
-        const done = state.weekDone.includes(w.week);
-        return `
-        <div class="week-card ${done ? '' : ''}" data-week="${w.week}">
-          <button type="button" class="week-head">
-            <div>
-              <strong>${w.title}${done ? ' ✓' : ''}</strong>
-              <small>${w.focus}</small>
-            </div>
-            <span style="color:var(--text-3);font-size:1.2rem">›</span>
-          </button>
-          <div class="week-body">
-            <p><strong>本周目标：</strong>${w.goals.join(' · ')}</p>
-            <p style="margin-top:8px"><strong>核心词汇（20）：</strong></p>
-            <div class="chip-row">${w.vocab.map((v) => `<span class="chip">${v}</span>`).join('')}</div>
-            <p style="margin-top:8px"><strong>必会句型：</strong></p>
-            <ul>${w.sentences.map((s) => `<li>${s}</li>`).join('')}</ul>
-            <p style="margin-top:8px"><strong>闯关任务：</strong>${w.tasks}</p>
-            <button type="button" class="btn ${done ? 'btn-ghost' : 'btn-accent'} btn-block" data-act="week">${done ? '取消完成' : '标记本周完成'}</button>
-          </div>
-        </div>`;
-      })
-      .join('');
-
-    box.onclick = (e) => {
-      const card = e.target.closest('.week-card');
-      if (!card) return;
-      const act = e.target.closest('[data-act=week]');
-      if (act) {
-        const week = Number(card.dataset.week);
-        const idx = state.weekDone.indexOf(week);
-        if (idx >= 0) state.weekDone.splice(idx, 1);
-        else state.weekDone.push(week);
-        persist();
-        renderCurriculum();
-        renderHomeStats();
-        toast(idx >= 0 ? '已取消' : `第${week}周完成！`);
-        return;
-      }
-      if (e.target.closest('.week-head')) card.classList.toggle('open');
-    };
-
-    $('#pets-tips').innerHTML = CURRICULUM_DATA.pets3Tips.map((t) => `<li>${t}</li>`).join('');
+  function ensureVocab(id) {
+    if (!state.vocab[id]) state.vocab[id] = { status: 'new', wrong: 0, correct: 0 };
   }
 
-  /* —— 首页统计 —— */
-  function renderHomeStats() {
-    Storage.recalcStreak(state);
-    $('#stat-streak').textContent = state.streak;
-    $('#stat-ph').textContent = state.phoneticsMastered.length;
-    $('#stat-quiz').textContent = Object.values(state.quizDone).filter((v) => v === 'known').length;
-    $('#stat-wrong').textContent = state.wrongBook.length;
-    $('#home-week').textContent = `${state.weekDone.length}/12 周`;
+  function maybeMarkVocabDaily() {
+    const reviewed = Object.keys(state.vocab).length;
+    const knownTodayish = reviewed >= Math.min(state.settings.dailyVocabTarget, 10);
+    if (knownTodayish) markDaily('vocab');
   }
 
-  /* —— 安装横幅 —— */
-  function setupInstall() {
-    const banner = $('#install-banner');
-    if (state.installDismissed) return;
+  function statusLabel(s) {
+    return { new: '未学', learning: '学习中', known: '已会' }[s] || s;
+  }
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      banner.classList.add('show');
-    });
+  function sampleMeanings(excludeId, n) {
+    const all = VOCAB_DATA.all().filter((w) => w.id !== excludeId);
+    return shuffle(all).slice(0, n).map((w) => w.meaning);
+  }
 
-    // iOS 提示
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-    if (isIOS && !isStandalone && !state.installDismissed) {
-      banner.classList.add('show');
-      $('#install-text').textContent = '点击 Safari 分享按钮 →「添加到主屏幕」，像 App 一样使用';
-      $('#install-btn').textContent = '知道了';
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
     }
+    return a;
+  }
 
-    $('#install-btn').onclick = async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-      }
-      banner.classList.remove('show');
-      state.installDismissed = true;
-      persist();
+  /* —— 语法 —— */
+  function renderGrammarList() {
+    $('#grammar-pill').textContent = `${Object.keys(state.grammar).length}/${GRAMMAR_DATA.topics.length}`;
+    $('#grammar-panel').style.display = 'none';
+    const list = $('#grammar-list');
+    list.style.display = 'block';
+    list.innerHTML = `<h2>专题列表</h2><p class="sub">覆盖公三高频考点</p>` +
+      GRAMMAR_DATA.topics.map((t) => {
+        const done = state.grammar[t.id];
+        return `<button type="button" class="list-item" data-g="${t.id}">
+          <span><strong>${t.title}</strong><small>${t.focus}</small></span>
+          <span class="badge ${done ? 'ok' : ''}">${done ? `${done.score}/${done.total}` : '未做'}</span>
+        </button>`;
+      }).join('');
+    list.onclick = (e) => {
+      const b = e.target.closest('[data-g]');
+      if (b) openGrammar(b.dataset.g);
+    };
+  }
+
+  function openGrammar(id) {
+    const topic = GRAMMAR_DATA.topics.find((t) => t.id === id);
+    $('#grammar-list').style.display = 'none';
+    const panel = $('#grammar-panel');
+    panel.style.display = 'block';
+    const answers = {};
+    panel.innerHTML = `
+      <button type="button" class="btn btn-ghost" id="g-back">← 返回列表</button>
+      <h2 style="margin-top:12px">${topic.title}</h2>
+      <p class="sub">${topic.focus}</p>
+      <ul class="points">${topic.points.map((p) => `<li>${p}</li>`).join('')}</ul>
+      ${topic.questions.map((q, i) => `
+        <div class="q-card" data-qid="${q.id}">
+          <div class="q">${i + 1}. ${q.q}</div>
+          ${q.options.map((op, oi) => `<button type="button" class="opt" data-oi="${oi}">${String.fromCharCode(65 + oi)}. ${op}</button>`).join('')}
+          <div class="explain">${q.explain}</div>
+        </div>`).join('')}
+      <button type="button" class="btn btn-primary btn-block" id="g-submit">提交本专题</button>`;
+
+    panel.onclick = (e) => {
+      const opt = e.target.closest('.opt');
+      if (!opt) return;
+      const card = opt.closest('.q-card');
+      if (card.classList.contains('revealed')) return;
+      $$('.opt', card).forEach((o) => o.classList.remove('pick'));
+      opt.classList.add('pick');
+      answers[card.dataset.qid] = Number(opt.dataset.oi);
     };
 
-    $('#install-close')?.addEventListener('click', () => {
-      banner.classList.remove('show');
-      state.installDismissed = true;
+    $('#g-back').onclick = () => renderGrammarList();
+    $('#g-submit').onclick = () => {
+      let score = 0;
+      topic.questions.forEach((q) => {
+        const card = panel.querySelector(`[data-qid="${q.id}"]`);
+        card.classList.add('revealed');
+        const pick = answers[q.id];
+        $$('.opt', card).forEach((o) => {
+          const oi = Number(o.dataset.oi);
+          if (oi === q.answer) o.classList.add('right');
+          if (pick === oi && oi !== q.answer) o.classList.add('wrong');
+        });
+        if (pick === q.answer) score += 1;
+        else addWrong({ id: q.id, module: '语法', prompt: q.q, answer: q.options[q.answer] });
+      });
+      state.grammar[id] = { done: true, score, total: topic.questions.length };
+      markDaily('grammar');
       persist();
+      toast(`得分 ${score}/${topic.questions.length}`);
+      $('#grammar-pill').textContent = `${Object.keys(state.grammar).length}/${GRAMMAR_DATA.topics.length}`;
+    };
+  }
+
+  /* —— 阅读 —— */
+  function renderReadingList() {
+    $('#reading-pill').textContent = `${Object.keys(state.reading).length}/${READING_DATA.passages.length}`;
+    $('#reading-panel').style.display = 'none';
+    const list = $('#reading-list');
+    list.style.display = 'block';
+    list.innerHTML = `<h2>篇章列表</h2><p class="sub">建议计时阅读后作答</p>` +
+      READING_DATA.passages.map((p) => {
+        const done = state.reading[p.id];
+        return `<button type="button" class="list-item" data-r="${p.id}">
+          <span><strong>${p.title}</strong><small>${p.difficulty} · 约${p.minutes}分钟</small></span>
+          <span class="badge ${done ? 'ok' : ''}">${done ? `${done.score}/${done.total}` : '未做'}</span>
+        </button>`;
+      }).join('');
+    list.onclick = (e) => {
+      const b = e.target.closest('[data-r]');
+      if (b) openReading(b.dataset.r);
+    };
+  }
+
+  function openReading(id) {
+    const p = READING_DATA.passages.find((x) => x.id === id);
+    $('#reading-list').style.display = 'none';
+    const panel = $('#reading-panel');
+    panel.style.display = 'block';
+    const answers = {};
+    panel.innerHTML = `
+      <button type="button" class="btn btn-ghost" id="r-back">← 返回列表</button>
+      <h2 style="margin-top:12px">${p.title}</h2>
+      <p class="sub">${p.difficulty} · 建议 ${p.minutes} 分钟</p>
+      <div class="passage">${p.text}</div>
+      ${p.questions.map((q, i) => `
+        <div class="q-card" data-qid="${q.id}">
+          <div class="q">${i + 1}. ${q.q}</div>
+          ${q.options.map((op, oi) => `<button type="button" class="opt" data-oi="${oi}">${String.fromCharCode(65 + oi)}. ${op}</button>`).join('')}
+        </div>`).join('')}
+      <button type="button" class="btn btn-primary btn-block" id="r-submit">提交答案</button>`;
+    panel.onclick = (e) => {
+      const opt = e.target.closest('.opt');
+      if (!opt) return;
+      const card = opt.closest('.q-card');
+      if (card.classList.contains('revealed')) return;
+      $$('.opt', card).forEach((o) => o.classList.remove('pick'));
+      opt.classList.add('pick');
+      answers[card.dataset.qid] = Number(opt.dataset.oi);
+    };
+    $('#r-back').onclick = () => renderReadingList();
+    $('#r-submit').onclick = () => {
+      let score = 0;
+      p.questions.forEach((q) => {
+        const card = panel.querySelector(`[data-qid="${q.id}"]`);
+        card.classList.add('revealed');
+        const pick = answers[q.id];
+        $$('.opt', card).forEach((o) => {
+          const oi = Number(o.dataset.oi);
+          if (oi === q.answer) o.classList.add('right');
+          if (pick === oi && oi !== q.answer) o.classList.add('wrong');
+        });
+        if (pick === q.answer) score += 1;
+        else addWrong({ id: q.id, module: '阅读', prompt: q.q, answer: q.options[q.answer] });
+      });
+      state.reading[id] = { done: true, score, total: p.questions.length, answers };
+      markDaily('reading');
+      persist();
+      toast(`阅读得分 ${score}/${p.questions.length}`);
+      $('#reading-pill').textContent = `${Object.keys(state.reading).length}/${READING_DATA.passages.length}`;
+    };
+  }
+
+  /* —— 听力 —— */
+  function speak(text) {
+    if (!window.speechSynthesis) {
+      toast('当前浏览器不支持语音朗读，请查看文本练习');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 0.9;
+    window.speechSynthesis.speak(u);
+  }
+
+  function renderListenList() {
+    $('#listen-tip').textContent = LISTENING_DATA.tip;
+    $('#listen-pill').textContent = `${Object.keys(state.listening).length}/${LISTENING_DATA.items.length}`;
+    $('#listen-panel').style.display = 'none';
+    const list = $('#listen-list');
+    list.style.display = 'block';
+    list.innerHTML = `<h2>听力列表</h2><p class="sub">播放后作答，可展开原文复盘</p>` +
+      LISTENING_DATA.items.map((it) => {
+        const done = state.listening[it.id];
+        return `<button type="button" class="list-item" data-l="${it.id}">
+          <span><strong>${it.title}</strong><small>${it.type}</small></span>
+          <span class="badge ${done ? 'ok' : ''}">${done ? `${done.score}/${done.total}` : '未做'}</span>
+        </button>`;
+      }).join('');
+    list.onclick = (e) => {
+      const b = e.target.closest('[data-l]');
+      if (b) openListen(b.dataset.l);
+    };
+  }
+
+  function openListen(id) {
+    const it = LISTENING_DATA.items.find((x) => x.id === id);
+    $('#listen-list').style.display = 'none';
+    const panel = $('#listen-panel');
+    panel.style.display = 'block';
+    const answers = {};
+    panel.innerHTML = `
+      <button type="button" class="btn btn-ghost" id="l-back">← 返回列表</button>
+      <h2 style="margin-top:12px">${it.title}</h2>
+      <p class="sub">${it.type}</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="l-play">播放听力</button>
+        <button type="button" class="btn btn-ghost" id="l-stop">停止</button>
+        <button type="button" class="btn btn-ghost" id="l-script">显示/隐藏原文</button>
+      </div>
+      <div class="script-box" id="l-text">${it.script}</div>
+      ${it.questions.map((q, i) => `
+        <div class="q-card" data-qid="${q.id}" style="margin-top:10px">
+          <div class="q">${i + 1}. ${q.q}</div>
+          ${q.options.map((op, oi) => `<button type="button" class="opt" data-oi="${oi}">${String.fromCharCode(65 + oi)}. ${op}</button>`).join('')}
+        </div>`).join('')}
+      <button type="button" class="btn btn-primary btn-block" id="l-submit">提交答案</button>`;
+    $('#l-back').onclick = () => { window.speechSynthesis && window.speechSynthesis.cancel(); renderListenList(); };
+    $('#l-play').onclick = () => speak(it.script);
+    $('#l-stop').onclick = () => window.speechSynthesis && window.speechSynthesis.cancel();
+    $('#l-script').onclick = () => $('#l-text').classList.toggle('on');
+    panel.onclick = (e) => {
+      const opt = e.target.closest('.opt');
+      if (!opt) return;
+      const card = opt.closest('.q-card');
+      if (card.classList.contains('revealed')) return;
+      $$('.opt', card).forEach((o) => o.classList.remove('pick'));
+      opt.classList.add('pick');
+      answers[card.dataset.qid] = Number(opt.dataset.oi);
+    };
+    $('#l-submit').onclick = () => {
+      let score = 0;
+      it.questions.forEach((q) => {
+        const card = panel.querySelector(`[data-qid="${q.id}"]`);
+        card.classList.add('revealed');
+        const pick = answers[q.id];
+        $$('.opt', card).forEach((o) => {
+          const oi = Number(o.dataset.oi);
+          if (oi === q.answer) o.classList.add('right');
+          if (pick === oi && oi !== q.answer) o.classList.add('wrong');
+        });
+        if (pick === q.answer) score += 1;
+        else addWrong({ id: q.id, module: '听力', prompt: q.q, answer: q.options[q.answer] });
+      });
+      state.listening[id] = { done: true, score, total: it.questions.length };
+      markDaily('listening');
+      persist();
+      toast(`听力得分 ${score}/${it.questions.length}`);
+      $('#listen-pill').textContent = `${Object.keys(state.listening).length}/${LISTENING_DATA.items.length}`;
+    };
+  }
+
+  /* —— 写作 —— */
+  function renderWriteList() {
+    $('#write-tips').innerHTML = WRITING_DATA.tips.map((t) => `<li>${t}</li>`).join('');
+    $('#write-pill').textContent = `${Object.keys(state.writing).filter((k) => state.writing[k].submitted).length}/${WRITING_DATA.topics.length}`;
+    $('#write-panel').style.display = 'none';
+    const list = $('#write-list');
+    list.style.display = 'block';
+    list.innerHTML = `<h2>题目列表</h2>` +
+      WRITING_DATA.topics.map((t) => {
+        const w = state.writing[t.id];
+        return `<button type="button" class="list-item" data-w="${t.id}">
+          <span><strong>${t.title}</strong><small>${t.type}</small></span>
+          <span class="badge ${w?.submitted ? 'ok' : ''}">${w?.submitted ? '已提交' : w?.draft ? '有草稿' : '未写'}</span>
+        </button>`;
+      }).join('');
+    list.onclick = (e) => {
+      const b = e.target.closest('[data-w]');
+      if (b) openWrite(b.dataset.w);
+    };
+  }
+
+  function openWrite(id) {
+    const t = WRITING_DATA.topics.find((x) => x.id === id);
+    const saved = state.writing[id] || {};
+    $('#write-list').style.display = 'none';
+    const panel = $('#write-panel');
+    panel.style.display = 'block';
+    panel.innerHTML = `
+      <button type="button" class="btn btn-ghost" id="w-back">← 返回列表</button>
+      <h2 style="margin-top:12px">${t.title}</h2>
+      <p class="sub">${t.type}</p>
+      <div class="passage" style="white-space:normal">${t.prompt}</div>
+      <p class="sub" style="margin-top:10px">提纲：${t.outline.join(' → ')}</p>
+      <textarea class="write-area" id="w-draft" placeholder="在此写作文…">${saved.draft || ''}</textarea>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" id="w-save">保存草稿</button>
+        <button type="button" class="btn btn-primary" id="w-submit">提交练习</button>
+        <button type="button" class="btn btn-ok" id="w-model">对照范文</button>
+      </div>
+      <div class="model-box" id="w-model-box">${t.model}</div>`;
+    $('#w-back').onclick = () => renderWriteList();
+    $('#w-save').onclick = () => {
+      state.writing[id] = { ...(state.writing[id] || {}), draft: $('#w-draft').value, at: Date.now() };
+      persist();
+      toast('草稿已保存');
+    };
+    $('#w-submit').onclick = () => {
+      const draft = $('#w-draft').value.trim();
+      if (draft.length < 40) { toast('请先写够基本内容再提交'); return; }
+      state.writing[id] = { draft, submitted: true, at: Date.now() };
+      markDaily('writing');
+      persist();
+      toast('已提交，可对照范文复盘');
+      $('#write-pill').textContent = `${Object.keys(state.writing).filter((k) => state.writing[k].submitted).length}/${WRITING_DATA.topics.length}`;
+    };
+    $('#w-model').onclick = () => $('#w-model-box').classList.toggle('on');
+  }
+
+  /* —— 进度 —— */
+  function renderProgress() {
+    const timeChart = $('#time-chart');
+    const cols = [];
+    let maxM = 1;
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const k = Storage.todayKey(d);
+      const m = Math.round((state.studySeconds[k] || 0) / 60);
+      maxM = Math.max(maxM, m);
+      cols.push({ label: `${d.getMonth() + 1}/${d.getDate()}`, m });
+    }
+    timeChart.innerHTML = cols.map((c) =>
+      `<div class="col"><i style="height:${Math.max(4, (c.m / maxM) * 80)}px"></i><span>${c.label}</span></div>`
+    ).join('');
+
+    const checkChart = $('#check-chart');
+    const ccols = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const k = Storage.todayKey(d);
+      const day = state.daily[k];
+      const ok = day && (day.checked || Storage.isDayComplete(day));
+      ccols.push({ label: `${d.getDate()}`, ok });
+    }
+    checkChart.innerHTML = ccols.map((c) =>
+      `<div class="col"><i style="height:${c.ok ? 48 : 8}px;background:${c.ok ? 'var(--ok)' : 'var(--bg2)'}"></i><span>${c.label}</span></div>`
+    ).join('');
+
+    const mods = [
+      ['单词掌握', vocabKnownCount(), VOCAB_DATA.all().length],
+      ['语法专题', Object.keys(state.grammar).length, GRAMMAR_DATA.topics.length],
+      ['阅读篇章', Object.keys(state.reading).length, READING_DATA.passages.length],
+      ['听力练习', Object.keys(state.listening).length, LISTENING_DATA.items.length],
+      ['作文提交', Object.values(state.writing).filter((w) => w.submitted).length, WRITING_DATA.topics.length]
+    ];
+    $('#module-progress').innerHTML = mods.map(([name, a, b]) => `
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:4px">
+          <span>${name}</span><span>${a}/${b}</span>
+        </div>
+        <div class="bar"><i style="width:${(a / b) * 100}%"></i></div>
+      </div>`).join('');
+
+    const wl = $('#wrong-list');
+    if (!state.wrongBook.length) wl.innerHTML = '<div class="empty">暂无错题</div>';
+    else wl.innerHTML = state.wrongBook.slice(0, 30).map((w) => `
+      <div style="padding:10px 0;border-bottom:1px solid var(--line)">
+        <strong style="font-size:.84rem">[${w.module}] ${w.prompt}</strong>
+        <div style="font-size:.78rem;color:var(--ok);margin-top:4px">${w.answer}</div>
+      </div>`).join('');
+  }
+
+  /* —— 我的 —— */
+  function renderMe() {
+    $('#app-ver').textContent = APP_VERSION;
+    $('#set-minutes').value = state.settings.dailyGoalMinutes;
+    $('#set-vocab').value = state.settings.dailyVocabTarget;
+    $('#set-remind').value = state.settings.remindHour;
+    $('#set-remind-on').checked = !!state.settings.remindEnabled;
+  }
+
+  function saveSettings() {
+    state.settings.dailyGoalMinutes = Number($('#set-minutes').value) || 45;
+    state.settings.dailyVocabTarget = Number($('#set-vocab').value) || 20;
+    state.settings.remindHour = Number($('#set-remind').value) || 20;
+    state.settings.remindEnabled = $('#set-remind-on').checked;
+    persist();
+    if (state.settings.remindEnabled) setupReminder();
+    toast('设置已保存');
+  }
+
+  function setupReminder() {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then((p) => {
+      if (p !== 'granted') return;
+      scheduleReminderCheck();
     });
   }
 
-  /* —— 导出/重置 —— */
-  function setupTools() {
-    $('#btn-export')?.addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `oral-quest-backup-${Storage.todayKey()}.json`;
-      a.click();
-      toast('进度已导出');
-    });
+  function scheduleReminderCheck() {
+    // 页面打开时检查：若到了提醒小时且今日未打卡，弹通知
+    const hour = new Date().getHours();
+    if (!state.settings.remindEnabled) return;
+    if (hour !== state.settings.remindHour) return;
+    const day = Storage.ensureDaily(state);
+    if (day.checked || Storage.isDayComplete(day)) return;
+    const key = `reminded-${Storage.todayKey()}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    try {
+      new Notification('公三备考提醒', { body: '今天的五项备考任务还没完成，打开 App 打卡吧。', icon: './icons/icon-192.svg' });
+    } catch (_) {}
+  }
 
-    $('#btn-reset')?.addEventListener('click', () => {
-      if (!confirm('确定清空所有学习记录？此操作不可恢复。')) return;
+  /* —— 版本更新重置 —— */
+  function checkVersion() {
+    if (state.appVersion === APP_VERSION) return;
+    $('#modal-ver').textContent = APP_VERSION;
+    $('#version-modal').classList.add('on');
+    $('#ver-reset').onclick = () => {
       state = Storage.defaultState();
+      state.appVersion = APP_VERSION;
       persist();
+      Storage.clearOldOralQuest();
+      $('#version-modal').classList.remove('on');
+      toast('进度已重置');
       boot();
-      toast('已重置');
-    });
+    };
+    $('#ver-keep').onclick = () => {
+      state.appVersion = APP_VERSION;
+      persist();
+      $('#version-modal').classList.remove('on');
+      toast('已保留进度并更新版本号');
+    };
+  }
+
+  function resetAll() {
+    if (!confirm('确定清空全部学习进度、打卡与作文草稿？')) return;
+    const settings = { ...state.settings };
+    state = Storage.defaultState();
+    state.settings = settings;
+    state.appVersion = APP_VERSION;
+    persist();
+    toast('已全部重置');
+    boot();
+  }
+
+  function resetToday() {
+    const k = Storage.todayKey();
+    state.daily[k] = { vocab: false, grammar: false, reading: false, listening: false, writing: false, checked: false };
+    persist();
+    renderHome();
+    toast('今日打卡已重置');
+  }
+
+  function exportData() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `pets3-backup-${Storage.todayKey()}.json`;
+    a.click();
+    toast('已导出');
   }
 
   function boot() {
-    renderQuote();
-    renderCheckin();
-    renderPhonetics();
-    renderQuiz();
-    renderSpeaking();
-    renderPronounce();
-    renderWrong();
-    renderCurriculum();
-    renderHomeStats();
-
-    $$('.nav-btn').forEach((btn) => {
-      btn.onclick = () => navTo(btn.dataset.nav);
-    });
-
-    $$('[data-goto]').forEach((el) => {
-      el.onclick = () => navTo(el.dataset.goto);
-    });
+    Storage.ensureDaily(state);
+    state.lastActiveDate = Storage.todayKey();
+    persist();
+    renderHome();
+    $$('.nav-btn').forEach((b) => { b.onclick = () => navTo(b.dataset.nav); });
+    $$('[data-goto]').forEach((b) => { b.onclick = () => navTo(b.dataset.goto); });
+    $('#btn-timer').onclick = toggleTimer;
+    $('#btn-checkin').onclick = () => {
+      const day = Storage.ensureDaily(state);
+      if (!Storage.isDayComplete(day)) {
+        toast('请先完成五项任务（可手动勾选）');
+        return;
+      }
+      day.checked = true;
+      Storage.recalcStreak(state);
+      persist();
+      renderHome();
+      toast(`打卡成功！连续 ${state.streak} 天`);
+    };
+    $('#btn-save-set').onclick = saveSettings;
+    $('#btn-export').onclick = exportData;
+    $('#btn-reset-soft').onclick = resetToday;
+    $('#btn-reset-all').onclick = resetAll;
+    $('#wrong-clear').onclick = () => {
+      state.wrongBook = [];
+      persist();
+      renderProgress();
+      toast('错题已清空');
+    };
 
     const hash = (location.hash || '#home').slice(1);
-    const valid = ['home', 'checkin', 'phonetics', 'quiz', 'speaking', 'pronounce', 'wrong', 'plan'];
-    navTo(valid.includes(hash) ? hash : 'home');
+    const ok = ['home', 'vocab', 'grammar', 'reading', 'listening', 'writing', 'progress', 'me'];
+    navTo(ok.includes(hash) ? hash : 'home');
+    scheduleReminderCheck();
+    checkVersion();
   }
 
-  // SW
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && timerOn) {
+      const gained = Math.floor((Date.now() - sessionStart) / 1000);
+      timerOn = false;
+      clearInterval(timerTick);
+      addStudySeconds(gained);
+      refreshTimerUI();
+    }
+  });
+
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    });
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
   }
 
-  setupInstall();
-  setupTools();
   boot();
 })();

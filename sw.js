@@ -1,4 +1,4 @@
-const CACHE_NAME = 'oral-quest-v1';
+const CACHE_NAME = 'pets3-prep-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -6,12 +6,11 @@ const ASSETS = [
   './css/styles.css',
   './js/app.js',
   './js/storage.js',
-  './js/data/phonetics.js',
-  './js/data/quiz.js',
-  './js/data/speaking.js',
-  './js/data/pronunciation.js',
-  './js/data/quotes.js',
-  './js/data/curriculum.js',
+  './js/data/vocab.js',
+  './js/data/grammar.js',
+  './js/data/reading.js',
+  './js/data/listening.js',
+  './js/data/writing.js',
   './icons/icon-192.svg',
   './icons/icon-512.svg'
 ];
@@ -33,17 +32,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          const clone = response.clone();
-          if (response.ok && event.request.url.startsWith(self.location.origin)) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match('./index.html'));
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+      try {
+        const response = await fetch(event.request);
+        if (response && response.ok && event.request.url.startsWith(self.location.origin)) {
+          cache.put(event.request, response.clone());
+        }
+        return response;
+      } catch {
+        return cached || caches.match('./index.html');
+      }
     })
   );
 });
