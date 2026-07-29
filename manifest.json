@@ -1,0 +1,44 @@
+{
+  "name": "零基础英语口语闯关学习工作台",
+  "short_name": "口语闯关",
+  "description": "从零到公共英语三级的口语闯关学习工作台，离线可用、每日打卡",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E8F4FC",
+  "theme_color": "#4A9BC7",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["education", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "今日打卡",
+      "url": "./index.html#checkin",
+      "description": "完成今日口语任务"
+    },
+    {
+      "name": "音标闯关",
+      "url": "./index.html#phonetics",
+      "description": "48个国际音标练习"
+    }
+  ]
+}

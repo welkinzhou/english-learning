@@ -1,0 +1,9 @@
+# 若部署在仓库子路径（如 username.github.io/english-learning/）
+# 通常无需额外配置；本项目使用相对路径 ./ 资源引用。
+
+# 忽略本地编辑器与系统文件
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
